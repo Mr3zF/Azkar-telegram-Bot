@@ -3,6 +3,7 @@ name = "telebot"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "certifi>=2026.7.22",
     "dnspython>=2.8.0",
     "pymongo[srv]==4.9.0",
     "pytelegrambotapi>=4.36.1",

@@ -738,6 +738,7 @@ name = "telebot"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "dnspython" },
     { name = "pymongo" },
     { name = "pytelegrambotapi" },
@@ -746,6 +747,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi", specifier = ">=2026.7.22" },
     { name = "dnspython", specifier = ">=2.8.0" },
     { name = "pymongo", extras = ["srv"], specifier = "==4.9.0" },
     { name = "pytelegrambotapi", specifier = ">=4.36.1" },

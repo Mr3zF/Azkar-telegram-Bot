@@ -4,10 +4,13 @@ import random
 import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
-load_dotenv()
+import certifi
 
 MONGO_URI = os.getenv('MONGO_URI')
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
+load_dotenv()
+
+
 db = client["azkar_bot"]
 users_db = db["users"]
 
