@@ -189,5 +189,11 @@ def restart_timers():
 
         users_timers[chat_id] = timer
 
+@bot.message_handler(commands=['احصائيات'])
+def show_stats(message):
+    total_users = users_db.count_documents({})
+    active_users = users_db.count_documents({'azkar_active': True})
+    bot.reply_to(message, f'إجمالي المستخدمين: {total_users}\nالمستخدمين النشطين حالياً: {active_users}')
+
 restart_timers()
 bot.polling()
