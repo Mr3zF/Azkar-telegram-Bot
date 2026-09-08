@@ -38,10 +38,10 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['help'])
 def send_help(message):
-    bot.reply_to(message,'قم بكتابة "/تذكير" فقط للبدء ,ثم حدد وحدة القياس بعد كل تذكير (دقائق , ساعات) \n'
-                         'استخدم "/قف" لإيقاف التذكيرات \n'
-                         '\n استخدم "/تعديل" لتعديل وقت التذكير'
-                         'منشئ البوت IG : @1dyd')
+    bot.reply_to(message, 'قم بكتابة "/تذكير" فقط للبدء ,ثم حدد وحدة القياس بعد كل تذكير (دقائق , ساعات) \n'
+                          'استخدم "/قف" لإيقاف التذكيرات \n'
+                          '\n استخدم "/تعديل" لتعديل وقت التذكير \n'
+                          'منشئ البوت IG : @1dyd')
 @bot.message_handler(commands=['تذكير'])
 def ask(message):
     bot.reply_to(message, 'كيف تريد ان يكون تذكيرك \n'
