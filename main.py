@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 import threading
 import random
 import os
@@ -6,9 +7,10 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import certifi
 
+load_dotenv()
+
 MONGO_URI = os.getenv('MONGO_URI')
 client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-load_dotenv()
 
 
 db = client["azkar_bot"]
@@ -34,67 +36,127 @@ def update_amount(chat_id, amount,unit):
 def update_users(chat_id, status):
     users_db.update_one({'chat_id': chat_id}, {'$set': {'azkar_active': status}})
 
+def main_menu():
+
+    inline = types.InlineKeyboardMarkup()
+    tzkeer_bt = types.InlineKeyboardButton(text='تذكير جديد', callback_data='tzkeer+')
+    edit_bt = types.InlineKeyboardButton(text='تعديل وقت التذكير', callback_data='edit/')
+    cancel_bt = types.InlineKeyboardButton(text='إيقاف التذكير', callback_data='cancel-')
+    creator_bt = types.InlineKeyboardButton
+
+
+    inline.add(tzkeer_bt)
+    inline.add(edit_bt)
+    inline.add(cancel_bt)
+    inline.add(creator_bt)
+    return inline
+
+@bot.callback_query_handler(func=lambda call : call.data == 'back2main')
+def back2main(call):
+    keyboard = main_menu()
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+    bot.edit_message_text(chat_id=chat_id,message_id=message_id,text='كيف أساعدك ؟',reply_markup=keyboard)
+    bot.answer_callback_query(call.id)
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, 'أهلًا انا بوت للأذكار 🤍 .\n حدد لي المدة وأنا اقوم بأرسال ذكر عشوائي بعد انتهاء كل مدة'
-                          '\nلمعرفة كيفية استخدامي ارسل /help ')
 
-@bot.message_handler(commands=['help'])
-def send_help(message):
-    bot.reply_to(message, 'قم بكتابة "/تذكير" فقط للبدء ,ثم حدد وحدة القياس بعد كل تذكير (دقائق , ساعات) \n'
-                          'استخدم "/قف" لإيقاف التذكيرات \n'
-                          '\n استخدم "/تعديل" لتعديل وقت التذكير \n'
-                          'منشئ البوت IG : @1dyd')
-@bot.message_handler(commands=['تذكير'])
-def ask(message):
-    bot.reply_to(message, 'كيف تريد ان يكون تذكيرك \n'
-                          '**ملاحظة**\n'
-                          'اكتب "دقائق" أو "ساعات"')
+    keyboard = main_menu()
 
-    bot.register_next_step_handler(message,ask_unit)
+    bot.reply_to(message, 'أهلًا , أنا بوت للأذكار , كيف أساعدك ؟',reply_markup=keyboard)
 
-def ask_unit(message):
-    unit = message.text.strip()
-    if unit not in ['ساعات', 'ساعة', 'ساعه', 'دقائق', 'دقايق']:
-        bot.reply_to(message,'اكتب "دقائق" أو "ساعات" فقط')
-        bot.register_next_step_handler(message,ask_unit)
-        return
-    bot.reply_to(message,f'حدد العدد المراد بال{unit}')
-    bot.register_next_step_handler(message,check_num,unit)
 
-def check_num(message,unit):
-     try:
+@bot.callback_query_handler(func=lambda call : call.data == 'tzkeer+')
+def new_zkr(call):
+    inline = types.InlineKeyboardMarkup()
 
-         amount = int(message.text)
-         if amount <= 0:
-             bot.reply_to(message,"❌ ادخل رقم صحيح اكبر من 0")
-             bot.register_next_step_handler(message,check_num,unit)
-         else:
-             chat_id = message.chat.id
-             if unit in ['ساعات', 'ساعة', 'ساعه']:
-                 seconds = amount * 3600
-             else:
-                 seconds = amount * 60
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
 
-             send_zkr(chat_id, amount,unit)
+    hours_bt = types.InlineKeyboardButton(text='بالساعات',callback_data='hours+')
+    minutes_bt = types.InlineKeyboardButton(text= 'بالدقائق', callback_data='minutes+')
 
-             timer = threading.Timer(seconds, start_sending, args=(chat_id, seconds))
-             timer.start()
+    inline.add(hours_bt)
+    inline.add(minutes_bt)
 
-             users_timers[chat_id] = timer
+    bot.edit_message_text(chat_id=chat_id,message_id=message_id,text="هل تريد أن يكون التذكير بالدقائق أو الساعات ؟" , reply_markup=inline)
+    bot.answer_callback_query(call.id)
 
-             save_users(chat_id,amount, unit)
+@bot.callback_query_handler(func=lambda call : call.data in ['hours+' , 'minutes+'])
+def time_check(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
 
-             update_users(chat_id, True)
+    if call.data == 'hours+':
+        unit = 'ساعات'
+        bot.edit_message_text(chat_id=chat_id,message_id=message_id,text="أكتب عدد الساعات 'بالأرقام فقط'")
+        bot.register_next_step_handler(call.message,check_num,unit)
 
-     except ValueError:
-         bot.reply_to(message,'حاول مره ثانية , أدخل فقط عدد الدقائق')
-         bot.register_next_step_handler(message,check_num ,unit)
+    elif call.data == 'minutes+':
+        unit = 'دقائق'
+        bot.edit_message_text(chat_id=chat_id,message_id=message_id,text="أكتب عدد الدقائق 'بالأرقام فقط'")
+        bot.register_next_step_handler(call.message,check_num,unit)
+    bot.answer_callback_query(call.id)
+
+
+def check_num(message, unit):
+    try:
+
+        amount = int(message.text)
+        if amount <= 0:
+            bot.reply_to(message, "❌ ادخل رقم صحيح اكبر من 0")
+            bot.register_next_step_handler(message, check_num, unit)
+        else:
+            chat_id = message.chat.id
+            if chat_id in users_timers:
+                users_timers[chat_id].cancel()
+
+            if unit in ['ساعات', 'ساعة', 'ساعه']:
+                seconds = amount * 3600
+            else:
+                seconds = amount * 60
+
+            send_zkr(chat_id, amount, unit)
+
+            timer = threading.Timer(seconds, start_sending, args=(chat_id, seconds))
+            timer.start()
+
+            users_timers[chat_id] = timer
+            save_users(chat_id, amount, unit)
+            update_users(chat_id, True)
+            update_amount(chat_id, amount, unit)
+
+
+
+
+
+    except ValueError:
+        bot.reply_to(message, 'حاول مره ثانية , أدخل فقط عدد الدقائق')
+        bot.register_next_step_handler(message, check_num, unit)
 
 
 def send_zkr(chat_id,amount,unit):
     bot.send_chat_action(chat_id, 'typing')
-    bot.send_message(chat_id,f' سيتم إرسال اذكار متنوعة كل {amount}{unit} 🤍.')
+    back2main = types.InlineKeyboardButton(text='العودة للقائمة الرئيسية',callback_data='back2main')
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(back2main)
+    if amount == 1 and unit == 'ساعات':
+        bot.send_message(chat_id, ' سيتم إرسال أذكار متنوعة كل ساعة 🤍.',reply_markup=keyboard)
+    elif amount == 2 and unit == 'ساعات':
+        bot.send_message(chat_id, ' سيتم إرسال أذكار متنوعة كل ساعتين 🤍.',reply_markup=keyboard)
+    elif amount in range(3,11) and unit == 'ساعات':
+        bot.send_message(chat_id, f' سيتم إرسال اذكار متنوعة كل {amount}ساعات 🤍.',reply_markup=keyboard)
+    elif amount >= 11 and unit == 'ساعات':
+        bot.send_message(chat_id, f' سيتم إرسال اذكار متنوعة كل {amount}ساعة 🤍.',reply_markup=keyboard)
+    elif amount == 1 and unit == 'دقائق':
+        bot.send_message(chat_id, ' سيتم إرسال أذكار متنوعة كل دقيقة 🤍.',reply_markup=keyboard)
+    elif amount == 2 and unit == 'دقائق':
+        bot.send_message(chat_id, ' سيتم إرسال أذكار متنوعة كل دقيقتين 🤍.',reply_markup=keyboard)
+    elif amount in range(3,11) and unit == 'دقائق':
+        bot.send_message(chat_id, f' سيتم إرسال اذكار متنوعة كل {amount}دقايق 🤍.',reply_markup=keyboard)
+    elif amount >= 11 and unit == 'دقائق':
+        bot.send_message(chat_id, f' سيتم إرسال اذكار متنوعة كل {amount}دقيقة 🤍.',reply_markup=keyboard)
 
 def start_sending(chat_id,seconds):
     timer = threading.Timer(seconds ,start_sending, args=(chat_id,seconds))
@@ -106,71 +168,68 @@ def start_sending(chat_id,seconds):
 
     users_timers[chat_id] = timer
 
-@bot.message_handler(commands=['تعديل'])
-def edit_request(message):
-    bot.reply_to(message, 'تفضِل ان يكون تذكيرك الجديد دقائق أو ساعات ؟')
+@bot.callback_query_handler(func=lambda call : call.data == 'edit/')
+def edit_ask(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
 
-    bot.register_next_step_handler(message,edit_ask)
+    inline = types.InlineKeyboardMarkup()
 
-def edit_ask(message):
-    unit = message.text.strip()
-    if unit not in ["دقايق" , "دقائق" , "ساعات" , "ساعة" , "ساعه"]:
-        bot.reply_to(message,'❌❌ أكتب "دقائق" أو "ساعات"')
-        bot.register_next_step_handler(message,edit_ask)
-        return
-    bot.reply_to(message,f"أكتب رقم ال{unit} الجديد")
-    bot.register_next_step_handler(message,edit_timer,unit)
+    hours_bt = types.InlineKeyboardButton(text='بالساعات',callback_data='hours/')
+    minutes_bt = types.InlineKeyboardButton(text= 'بالدقائق', callback_data='minutes/')
 
-def edit_timer(message, unit):
-    try:
-        amount = int(message.text)
-        if amount <= 0:
-            bot.reply_to(message, "❌❌ ارسل رقم صحيح مثل : 15")
-            bot.register_next_step_handler(message, edit_timer, unit)
-            return
+    inline.add(hours_bt)
+    inline.add(minutes_bt)
 
-        chat_id = message.chat.id
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="هل تريد أن يكون التذكير بالدقائق أو الساعات ؟",
+                          reply_markup=inline)
+    bot.answer_callback_query(call.id)
 
-        if unit in ['ساعات', 'ساعة', 'ساعه']:
-            seconds = amount * 3600
-        else:
-            seconds = amount * 60
+@bot.callback_query_handler(func=lambda call : call.data in ['hours/','minutes/'])
+def edit_tzkeer(call):
+    keyboard = types.InlineKeyboardMarkup()
+    back2main = types.InlineKeyboardButton(text='العودة للقائمة الرئيسية',callback_data='back2main')
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+    keyboard.add(back2main)
+    if chat_id in users_timers:
 
-        if chat_id in users_timers:
-            users_timers[chat_id].cancel()
-            users_timers.pop(chat_id)
-        else:
-            bot.reply_to(message, 'لايوجد تذكير لتعديله')
-            return
+        if call.data == 'hours/':
+            unit = 'ساعات'
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="أكتب عدد الساعات 'بالأرقام فقط'")
+            bot.register_next_step_handler(call.message, check_num, unit)
 
-        timer = threading.Timer(seconds, start_sending, args=(chat_id, seconds))
-        timer.start()
+        elif call.data == 'minutes/':
+            unit = 'دقائق'
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="أكتب عدد الدقائق 'بالأرقام فقط'")
+            bot.register_next_step_handler(call.message, check_num, unit)
+    else:
+        bot.edit_message_text(chat_id=chat_id,message_id=message_id,text='لايوجد تذكير لتعديله', reply_markup=keyboard)
+    bot.answer_callback_query(call.id)
 
-        update_amount(chat_id, amount, unit)
-        update_users(chat_id, True)
-        users_timers[chat_id] = timer
+@bot.callback_query_handler(func=lambda call : call.data == 'cancel-')
+def cancel(call):
+    keyboard = types.InlineKeyboardMarkup()
 
-        bot.send_message(chat_id, f'تم تعديل التذكيرات \nسيتم ارسال التذكير كل {amount} {unit} 🤍')
+    back2main = types.InlineKeyboardButton(text='العودة للقائمة الرئيسية',callback_data='back2main')
 
-    except ValueError:
-        bot.reply_to(message, "❌❌ ارسل رقم صحيح مثل : 15")
-        bot.register_next_step_handler(message, edit_timer, unit)
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
 
-
-@bot.message_handler(commands=['قف'])
-def cancel(message):
-    chat_id = message.chat.id
     if chat_id in users_timers:
 
         users_timers[chat_id].cancel()
-
-        bot.send_message(chat_id, 'تم ايقاف التذكيرات')
-
+        keyboard.add(back2main)
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text='تم إيقاف التذكيرات',
+                              reply_markup=keyboard)
+        update_users(chat_id,False)
         users_timers.pop(chat_id)
 
-        update_users(chat_id, False)
     else:
-        bot.reply_to(message,'لا يوجد تذكير لإيقافه')
+        keyboard.add(back2main)
+        bot.edit_message_text(chat_id=chat_id,message_id=message_id, text='لايوجد تذكير لإيقافه',reply_markup=keyboard)
+    bot.answer_callback_query(call.id)
+
 
 @bot.message_handler(commands=['احصائيات'])
 def show_stats(message):
