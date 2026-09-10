@@ -42,7 +42,7 @@ def main_menu():
     tzkeer_bt = types.InlineKeyboardButton(text='تذكير جديد', callback_data='tzkeer+')
     edit_bt = types.InlineKeyboardButton(text='تعديل وقت التذكير', callback_data='edit/')
     cancel_bt = types.InlineKeyboardButton(text='إيقاف التذكير', callback_data='cancel-')
-    creator_bt = types.InlineKeyboardButton
+    creator_bt = types.InlineKeyboardButton(text='منشئ البوت', url='www.instagram.com/1dyd/')
 
 
     inline.add(tzkeer_bt)
